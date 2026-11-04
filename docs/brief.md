@@ -157,11 +157,11 @@ These findings should be presented as suggestions for human review, not definiti
 
 - [x] Initialize repository and project structure.
 - [x] Configure FastAPI.
-- [ ] Configure PostgreSQL.
-- [ ] Implement database migrations.
-- [ ] Implement secure document upload.
-- [ ] Implement PDF text extraction.
-- [ ] Implement basic document storage.
+- [x] Configure PostgreSQL.
+- [x] Implement database migrations.
+- [x] Implement secure document upload.
+- [x] Implement PDF text extraction.
+- [x] Implement basic document storage.
 - [ ] Create automated tests.
 
 **Milestone:** Upload a PDF and retrieve its extracted text.
