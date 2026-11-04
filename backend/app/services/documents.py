@@ -71,14 +71,6 @@ async def save_and_extract_pdf(file: UploadFile, db: Session) -> Document:
     save_filename = Path(file.filename or "document.pdf").name
     document_dir = STORAGE_DIR / str(document_id)
 
-    try:
-        document_dir.mkdir(parents=True, exist_ok=False)
-    except OSError as exc:
-        raise DocumentProcessingError(
-            "Failed to create a storage directory for the document.", 
-            status_code=500,
-        ) from exc
-
     document = Document(
         id=document_id,
         filename=save_filename,
@@ -86,6 +78,14 @@ async def save_and_extract_pdf(file: UploadFile, db: Session) -> Document:
         extracted_text=extracted_text,
         created_at=datetime.now(UTC),
     )
+
+    try:
+        document_dir.mkdir(parents=True, exist_ok=False)
+    except OSError as exc:
+        raise DocumentProcessingError(
+            "Failed to create a storage directory for the document.", 
+            status_code=500,
+        ) from exc
 
     try:
         (document_dir / "original.pdf").write_bytes(content)
