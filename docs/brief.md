@@ -162,7 +162,7 @@ These findings should be presented as suggestions for human review, not definiti
 - [x] Implement secure document upload.
 - [x] Implement PDF text extraction.
 - [x] Implement basic document storage.
-- [ ] Create automated tests.
+- [x] Create automated tests.
 
 **Milestone:** Upload a PDF and retrieve its extracted text.
 
