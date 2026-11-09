@@ -82,8 +82,8 @@ def extract_document_invoice(
         invoice = extract_invoice(document.extracted_text)
     except InvoiceExtractionError as exc:
         raise HTTPException(
-            status_code=502,
-            detail="Invoice extraction failed.",
+            status_code=exc.status_code,
+            detail=exc.message,
         ) from exc
 
     document.invoice_extraction = invoice.model_dump(mode="json")

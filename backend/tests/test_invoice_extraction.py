@@ -100,9 +100,11 @@ def test_extract_invoice_logs_safe_provider_error_details(monkeypatch, caplog):
         SecretStr("test-secret"),
     )
 
-    with pytest.raises(InvoiceExtractionError, match="OpenAI request failed"):
+    with pytest.raises(InvoiceExtractionError) as exc_info:
         invoice_extraction.extract_invoice("sensitive invoice text")
 
+    assert exc_info.value.status_code == 503
+    assert "rate limit or account quota reached" in exc_info.value.message
     assert "FakeOpenAIError" in caplog.text
     assert "status=429" in caplog.text
     assert "request_id=req-test" in caplog.text

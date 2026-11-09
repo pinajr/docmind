@@ -105,16 +105,19 @@ def test_extract_invoice_returns_404_for_missing_document(client):
     assert response.json() == {"detail": "Document not found."}
 
 
-def test_extract_invoice_returns_502_when_provider_fails(
+def test_extract_invoice_returns_503_when_provider_rate_limited(
     client,
     uploaded_document_response,
     monkeypatch,
 ):
     document_id = uploaded_document_response.json()["id"]
 
-
     def fake_extract_invoice(text):
-        raise InvoiceExtractionError("Provider unavailable")
+        raise InvoiceExtractionError(
+            "OpenAI rate limit or account quota reached. "
+            "Check API usage and billing before retrying.",
+            status_code=503,
+        )
 
 
     monkeypatch.setattr(
@@ -125,5 +128,10 @@ def test_extract_invoice_returns_502_when_provider_fails(
 
     response = client.post(f"/api/documents/{document_id}/extract")
 
-    assert response.status_code == 502
-    assert response.json() == {"detail": "Invoice extraction failed."}
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": (
+            "OpenAI rate limit or account quota reached. "
+            "Check API usage and billing before retrying."
+        )
+    }
