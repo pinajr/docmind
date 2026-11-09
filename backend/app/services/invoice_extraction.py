@@ -18,7 +18,11 @@ class InvoiceExtractionError(Exception):
 
 def extract_invoice(text: str) -> InvoiceExtraction:
     if not text.strip():
-        raise InvoiceExtractionError("There is no document text to extract.")
+        raise InvoiceExtractionError(
+            "No selectable text was extracted. Scanned PDFs require OCR "
+            "before invoice extraction.",
+            status_code=422,
+        )
 
     if settings.open_api_key is None:
         raise InvoiceExtractionError("The OpenAI API key is not configured.")

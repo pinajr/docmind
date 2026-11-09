@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+import pymupdf
+
 from app.routes import documents as document_routes
 from app.schemas.extraction.invoice import InvoiceExtraction
 from app.services.invoice_extraction import InvoiceExtractionError
@@ -103,6 +105,29 @@ def test_extract_invoice_returns_404_for_missing_document(client):
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Document not found."}
+
+
+def test_extract_invoice_returns_422_for_pdf_without_selectable_text(client):
+    with pymupdf.open() as pdf:
+        pdf.new_page()
+        blank_pdf = pdf.tobytes()
+
+    upload_response = client.post(
+        "/api/documents",
+        files={"file": ("blank.pdf", blank_pdf, "application/pdf")},
+    )
+    assert upload_response.status_code == 201
+    document_id = upload_response.json()["id"]
+
+    response = client.post(f"/api/documents/{document_id}/extract")
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": (
+            "No selectable text was extracted. Scanned PDFs require OCR "
+            "before invoice extraction."
+        )
+    }
 
 
 def test_extract_invoice_returns_503_when_provider_rate_limited(

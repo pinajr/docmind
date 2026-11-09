@@ -58,6 +58,18 @@ def test_extract_invoice_fails_without_api_key(monkeypatch):
         invoice_extraction.extract_invoice("Some invoice text")
 
 
+def test_extract_invoice_rejects_empty_text_without_creating_client(monkeypatch):
+    def unexpected_openai_client(**kwargs):
+        pytest.fail("OpenAI client should not be created for empty document text")
+
+    monkeypatch.setattr(invoice_extraction, "OpenAI", unexpected_openai_client)
+
+    with pytest.raises(InvoiceExtractionError, match="No selectable text") as exc_info:
+        invoice_extraction.extract_invoice(" \n ")
+
+    assert exc_info.value.status_code == 422
+
+
 def test_extract_invoice_fails_without_parsed_result(monkeypatch):
     class FakeResponses:
         def parse(self, **kwargs):
