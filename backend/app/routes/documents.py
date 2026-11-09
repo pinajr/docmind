@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import get_session
 from app.schemas.documents import DocumentUploadResponse
@@ -9,6 +10,11 @@ from app.services.documents import (
     DocumentProcessingError,
     get_document,
     save_and_extract_pdf,
+)
+from app.schemas.extraction.invoice import InvoiceExtraction
+from app.services.invoice_extraction import (
+    InvoiceExtractionError,
+    extract_invoice,
 )
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -53,3 +59,43 @@ def retrieve_document(
     except DocumentNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Document not found.") from exc
     return document
+
+
+@router.post(
+    "/{document_id}/extract",
+    response_model=InvoiceExtraction,
+    summary="Extract invoice fields from a saved document",
+)
+def extract_document_invoice(
+    document_id: str,
+    db: Session = Depends(get_session),
+) -> InvoiceExtraction:
+    try:
+        document = get_document(document_id, db)
+    except DocumentNotFoundError as exc:
+        raise HTTPException(
+            status_code=404, 
+            detail="Document not found.",
+        ) from exc
+
+    try:
+        invoice = extract_invoice(document.extracted_text)
+    except InvoiceExtractionError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Invoice extraction failed.",
+        ) from exc
+
+    document.invoice_extraction = invoice.model_dump(mode="json")
+
+    try:
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save invoice extraction",
+        ) from exc
+
+    return invoice
+    

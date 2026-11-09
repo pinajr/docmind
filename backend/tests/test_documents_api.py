@@ -1,3 +1,10 @@
+from decimal import Decimal
+
+from app.routes import documents as document_routes
+from app.schemas.extraction.invoice import InvoiceExtraction
+from app.services.invoice_extraction import InvoiceExtractionError
+
+
 def test_upload_rejects_non_pdf_content(client):
     response = client.post(
         "/api/documents",
@@ -56,3 +63,67 @@ def test_upload_stores_original_pdf(tmp_path, valid_pdf, uploaded_document_respo
 
     stored_pdf = tmp_path / document_id / "original.pdf"
     assert stored_pdf.read_bytes() == valid_pdf
+
+
+def test_extract_invoice_and_retrieve_it(client, uploaded_document_response, monkeypatch):
+    document_id = uploaded_document_response.json()["id"]
+
+    expected = InvoiceExtraction(
+        invoice_number="INV-42",
+        total_amount=Decimal("125.40"),
+    )
+
+
+    def fake_extract_invoice(text):
+        assert "DocMind test invoice" in text
+        return expected
+
+
+    monkeypatch.setattr(
+        document_routes,
+        "extract_invoice",
+        fake_extract_invoice,
+    )
+
+    response = client.post(f"/api/documents/{document_id}/extract")
+
+    assert response.status_code == 200
+    assert response.json()["invoice_number"] == "INV-42"
+    assert response.json()["total_amount"] == "125.40"
+
+    retrieved = client.get(f"/api/documents/{document_id}")
+
+    assert retrieved.status_code == 200
+    assert retrieved.json()["invoice_extraction"]["invoice_number"] == "INV-42"
+    assert retrieved.json()["invoice_extraction"]["total_amount"] == "125.40"
+
+
+def test_extract_invoice_returns_404_for_missing_document(client):
+    response = client.post("/api/documents/not-a-uuid/extract")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Document not found."}
+
+
+def test_extract_invoice_returns_502_when_provider_fails(
+    client,
+    uploaded_document_response,
+    monkeypatch,
+):
+    document_id = uploaded_document_response.json()["id"]
+
+
+    def fake_extract_invoice(text):
+        raise InvoiceExtractionError("Provider unavailable")
+
+
+    monkeypatch.setattr(
+        document_routes,
+        "extract_invoice",
+        fake_extract_invoice,
+    )
+
+    response = client.post(f"/api/documents/{document_id}/extract")
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Invoice extraction failed."}

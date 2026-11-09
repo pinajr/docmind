@@ -1,3 +1,6 @@
+from typing import Any
+from sqlalchemy import JSON
+
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -22,5 +25,9 @@ class Document(Base):
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
+    )
+    invoice_extraction: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON,
+        nullable=True,
     )
     
