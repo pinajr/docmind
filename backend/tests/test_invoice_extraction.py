@@ -2,6 +2,7 @@ import pytest
 
 from types import SimpleNamespace
 from decimal import Decimal
+from openai import OpenAIError
 
 from pydantic import SecretStr
 
@@ -77,3 +78,33 @@ def test_extract_invoice_fails_without_parsed_result(monkeypatch):
     
     with pytest.raises(InvoiceExtractionError, match="no parsed invoice"):
         invoice_extraction.extract_invoice("Some invoice text")
+
+
+def test_extract_invoice_logs_safe_provider_error_details(monkeypatch, caplog):
+    class FakeOpenAIError(OpenAIError):
+        status_code = 429
+        request_id = "req-test"
+
+    class FakeResponses:
+        def parse(self, **kwargs):
+            raise FakeOpenAIError("simulated provider failure")
+
+    class FakeOpenAI:
+        def __init__(self, *, api_key):
+            self.responses = FakeResponses()
+
+    monkeypatch.setattr(invoice_extraction, "OpenAI", FakeOpenAI)
+    monkeypatch.setattr(
+        invoice_extraction.settings,
+        "open_api_key",
+        SecretStr("test-secret"),
+    )
+
+    with pytest.raises(InvoiceExtractionError, match="OpenAI request failed"):
+        invoice_extraction.extract_invoice("sensitive invoice text")
+
+    assert "FakeOpenAIError" in caplog.text
+    assert "status=429" in caplog.text
+    assert "request_id=req-test" in caplog.text
+    assert "test-secret" not in caplog.text
+    assert "sensitive invoice text" not in caplog.text

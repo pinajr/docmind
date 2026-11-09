@@ -1,7 +1,12 @@
+import logging
+
 from openai import OpenAI, OpenAIError
 
 from app.config import settings
 from app.schemas.extraction.invoice import InvoiceExtraction
+
+
+logger = logging.getLogger(__name__)
 
 
 class InvoiceExtractionError(Exception):
@@ -31,9 +36,16 @@ def extract_invoice(text: str) -> InvoiceExtraction:
             text_format=InvoiceExtraction,
         )
     except OpenAIError as exc:
+        logger.warning(
+            "OpenAI invoice extraction failed: type=%s status=%s request_id=%s",
+            type(exc).__name__,
+            getattr(exc, "status_code", None),
+            getattr(exc, "request_id", None),
+        )
         raise InvoiceExtractionError("The OpenAI request failed.") from exc
-    
+
     if response.output_parsed is None:
+        logger.warning("OpenAI invoice extraction returned no parsed result.")
         raise InvoiceExtractionError("OpenAI returned no parsed invoice.")
 
     return response.output_parsed
