@@ -101,3 +101,11 @@ not require an OpenAI API key, contact OpenAI, or incur API charges.
   needs an appropriate shared, access-controlled storage service.
 - Authentication, a frontend, document Q&A, comparison, and production
   deployment are not implemented.
+
+## License and sample material
+
+The MIT License in the repository root applies to the original DocMind source
+code and documentation only. It does not cover
+`backend/data/sample-pdf-invoice.pdf`, a third-party sample invoice. That file
+remains subject to its owner's rights; the project license does not grant
+permission to use or redistribute it.
